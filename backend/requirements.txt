@@ -1,0 +1,7 @@
+# Django REST + JWT — pin versions for reproducible deploys
+Django>=6.0,<7
+djangorestframework>=3.15,<4
+djangorestframework-simplejwt>=5.3,<6
+django-cors-headers>=4.3,<5
+Pillow>=10,<13
+python-dotenv>=1.0,<2
