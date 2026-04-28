@@ -73,6 +73,11 @@ export default function BookingStepPayment() {
   const upiHref = buildUpiUri(amountStr)
   const qrSrc = `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(upiHref)}`
 
+  const guestDetailsList = useMemo(
+    () => (Array.isArray(draft.guestDetails) ? draft.guestDetails : []),
+    [draft.guestDetails],
+  )
+
   const draftPayload = useMemo(
     () => ({
       room: room?.id,
@@ -80,9 +85,9 @@ export default function BookingStepPayment() {
       check_out: draft.check_out,
       guests: Number(draft.guests),
       special_requests: draft.special_requests || '',
-      guest_details: draft.guestDetails || [],
+      guest_details: guestDetailsList,
     }),
-    [room, draft.check_in, draft.check_out, draft.guests, draft.special_requests, draft.guestDetails],
+    [room, draft.check_in, draft.check_out, draft.guests, draft.special_requests, guestDetailsList],
   )
 
   useEffect(() => {
@@ -123,7 +128,7 @@ export default function BookingStepPayment() {
       fd.append('check_out', draft.check_out)
       fd.append('guests', String(draft.guests))
       fd.append('special_requests', draft.special_requests || '')
-      fd.append('guest_details', JSON.stringify(draft.guestDetails || []))
+      fd.append('guest_details', JSON.stringify(guestDetailsList))
       fd.append('payment_method', payMode === 'qr' ? 'qr' : 'upi')
       fd.append('payment_screenshot', file)
 

@@ -1,4 +1,5 @@
 """Booking serializers with date validation and price computation."""
+import json
 from datetime import date
 
 from django.utils import timezone
@@ -43,6 +44,27 @@ class BookingSerializer(serializers.ModelSerializer):
             and getattr(request.user, 'is_staff_role', False)
         )
         self.fields['status'].read_only = not staff
+
+    def to_internal_value(self, data):
+        """Support multipart: guest_details arrives as a JSON string. Validate it
+        parses, but keep it as a string so DRF's JSONField parses it itself —
+        round-tripping through a QueryDict turns lists into Python-repr strings
+        (single quotes), which then fail json.loads."""
+        if hasattr(data, 'get'):
+            raw = data.get('guest_details')
+            if isinstance(raw, str):
+                s = raw.strip()
+                mutable = data.copy() if hasattr(data, 'copy') else dict(data)
+                if not s:
+                    mutable['guest_details'] = '[]'
+                else:
+                    try:
+                        json.loads(s)
+                    except json.JSONDecodeError as e:
+                        raise serializers.ValidationError({'guest_details': f'Invalid JSON: {e}'}) from e
+                    mutable['guest_details'] = s
+                return super().to_internal_value(mutable)
+        return super().to_internal_value(data)
 
     def validate_guest_details(self, value):
         if value is None:
@@ -91,6 +113,22 @@ class BookingSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError(
                 {'guests': f'Maximum guests for this room is {room.max_guests}.'}
             )
+
+        request = self.context.get('request')
+        if self.instance is None and request is not None and request.method in ('POST', 'PUT', 'PATCH'):
+            pm = attrs.get('payment_method', '') or ''
+            if pm in (Booking.PaymentMethod.UPI, Booking.PaymentMethod.QR):
+                have_file = attrs.get('payment_screenshot') or (
+                    request.FILES.get('payment_screenshot') if request else None
+                )
+                if not have_file:
+                    raise serializers.ValidationError(
+                        {
+                            'payment_screenshot': (
+                                'Please upload a screenshot of your UPI/QR payment for verification.'
+                            ),
+                        }
+                    )
 
         if self.instance is None and guest_details is not None:
             if len(guest_details) != guests:

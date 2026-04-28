@@ -4,6 +4,7 @@ from decimal import Decimal
 from django.db.models import Count, Sum
 from django.db.models.functions import TruncMonth
 from rest_framework import permissions, viewsets
+from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
@@ -23,6 +24,7 @@ class BookingViewSet(viewsets.ModelViewSet):
     """
     serializer_class = BookingSerializer
     permission_classes = (permissions.IsAuthenticated,)
+    parser_classes = (JSONParser, FormParser, MultiPartParser)
 
     def get_queryset(self):
         qs = Booking.objects.select_related('user', 'room').order_by('-created_at')
